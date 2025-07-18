@@ -16,7 +16,10 @@ import org.jsoup.nodes.Element;
 import javax.annotation.Resource;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -57,12 +60,13 @@ public abstract class AbstractTicketService implements TicketService {
                 .filter(list -> list.size() > 1)
                 .map(list -> list.get(1))
                 .map(Element::text)
+                .map(x -> x.replaceAll("\\s+", ""))
                 .orElseGet(String::new);
 
         long maxBrushDays = 7;
         if (StrUtil.isNotBlank(date)) {
             LocalDateTime startTime = brushStartDate.atStartOfDay();
-            LocalDateTime endTime = LocalDateTimeUtil.parse(StrUtil.removeAll(date, " "), DatePattern.CHINESE_DATE_PATTERN);
+            LocalDateTime endTime = LocalDateTimeUtil.parse(date, DatePattern.CHINESE_DATE_PATTERN);
             maxBrushDays = LocalDateTimeUtil.between(startTime, endTime).toDays();
         }
 
