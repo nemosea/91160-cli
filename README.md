@@ -130,6 +130,19 @@ proxyMode=ROUND_ROBIN
 2. 执行jar时加入`-Dfile.encoding=utf-8`，即`java -Dfile.encoding=utf-8 -jar 91160-cli.jar init|register`；
 3. 终端不要用`powershell`，要用`cmd.exe`；
 
+## Development 开发者
+
+### 如何编译
+
+```bash
+./build.sh
+```
+随后运行
+```
+java -jar target/91160-cli-jar-with-dependencies.jar register -c config.properties
+```
+
+
 ## 赞赏作者
 
 如果您觉得`91160-cli`对你有帮助，可以请作者喝杯咖啡哦～
