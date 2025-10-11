@@ -140,7 +140,7 @@ public class Config {
 
     /**
      * 获取随机休眠时间（毫秒）
-     * 支持格式: "3000" 或 "3000-8000"
+     * 支持格式: "3000" 或 "3000-8000", 如果为3000则是固定的
      * @return 随机休眠时间
      */
     public int getRandomSleepTime() {
