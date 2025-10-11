@@ -1,16 +1,21 @@
 package com.github.pengpan.entity;
 
+import java.util.List;
+
 import com.github.pengpan.enums.BrushChannelEnum;
 import com.github.pengpan.enums.OcrPlatformEnum;
 import com.github.pengpan.enums.ProxyModeEnum;
-import lombok.Data;
 
-import java.util.List;
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author pengpan
  */
 @Data
+@Slf4j
 public class Config {
 
     /**
@@ -69,9 +74,9 @@ public class Config {
     private String memberId;
 
     /**
-     * 刷号休眠时间[单位:毫秒]
+     * 刷号休眠时间[单位:毫秒]，支持范围格式如: 3000-8000
      */
-    private int sleepTime;
+    private String sleepTime;
 
     /**
      * 刷号起始日期(表示刷该日期后一周的号,为空取当前日期)[格式: 2022-06-01]
@@ -132,4 +137,39 @@ public class Config {
      * 91160-ocr-server的服务地址
      */
     private String baseUrl;
+
+    /**
+     * 获取随机休眠时间（毫秒）
+     * 支持格式: "3000" 或 "3000-8000"
+     * @return 随机休眠时间
+     */
+    public int getRandomSleepTime() {
+        if (StrUtil.isBlank(sleepTime)) {
+            return 3000; // 默认值
+        }
+        
+        if (sleepTime.contains("-")) {
+            // 范围格式: 3000-8000
+            String[] parts = sleepTime.split("-");
+            if (parts.length == 2) {
+                try {
+                    int min = Integer.parseInt(parts[0].trim());
+                    int max = Integer.parseInt(parts[1].trim());
+                    log.info("随机休眠时间范围: {} - {}", min, max);
+                    return RandomUtil.randomInt(min, max + 1);
+                } catch (NumberFormatException e) {
+                    return 3000; // 解析失败，返回默认值
+                }
+            }
+        } else {
+            // 固定值格式: 3000
+            try {
+                return Integer.parseInt(sleepTime.trim());
+            } catch (NumberFormatException e) {
+                return 3000; // 解析失败，返回默认值
+            }
+        }
+        
+        return 3000; // 默认值
+    }
 }
