@@ -1,5 +1,33 @@
 package com.github.pengpan.service.impl;
 
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.Resource;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.springframework.stereotype.Service;
+
+import com.ejlchina.json.JSONKit;
+import com.github.pengpan.client.MainClient;
+import com.github.pengpan.common.constant.SystemConstant;
+import com.github.pengpan.common.store.AccountStore;
+import com.github.pengpan.common.store.ConfigStore;
+import com.github.pengpan.entity.CheckUser;
+import com.github.pengpan.entity.CheckUserV3;
+import com.github.pengpan.entity.fateadm.CapRegResult;
+import com.github.pengpan.enums.LoginResultEnum;
+import com.github.pengpan.enums.OcrPlatformEnum;
+import com.github.pengpan.service.CaptchaService;
+import com.github.pengpan.service.DdddOcrService;
+import com.github.pengpan.service.LoginService;
+import com.github.pengpan.util.Assert;
+
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.img.ImgUtil;
 import cn.hutool.core.map.MapUtil;
@@ -10,33 +38,9 @@ import cn.hutool.crypto.SecureUtil;
 import cn.hutool.crypto.asymmetric.KeyType;
 import cn.hutool.crypto.asymmetric.RSA;
 import cn.hutool.http.HttpUtil;
-import com.ejlchina.json.JSONKit;
-import com.github.pengpan.client.MainClient;
-import com.github.pengpan.common.constant.SystemConstant;
-import com.github.pengpan.common.store.AccountStore;
-import com.github.pengpan.common.store.ConfigStore;
-import com.github.pengpan.entity.CheckUser;
-import com.github.pengpan.entity.fateadm.CapRegResult;
-import com.github.pengpan.enums.LoginResultEnum;
-import com.github.pengpan.enums.OcrPlatformEnum;
-import com.github.pengpan.service.CaptchaService;
-import com.github.pengpan.service.DdddOcrService;
-import com.github.pengpan.service.LoginService;
-import com.github.pengpan.util.Assert;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.ResponseBody;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.springframework.stereotype.Service;
 import retrofit2.Response;
-
-import javax.annotation.Resource;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author pengpan
@@ -169,6 +173,13 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     public LoginResultEnum loginV2(String username, String password, String token, String code) {
+        // Add human-like delay before login
+        try {
+            Thread.sleep(RandomUtil.randomInt(1000, 3000));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
         String encryptedUsername = Base64.encode(rsa.encrypt(username, KeyType.PublicKey));
         String encryptedPassword = Base64.encode(rsa.encrypt(password, KeyType.PublicKey));
 
@@ -224,10 +235,8 @@ public class LoginServiceImpl implements LoginService {
                 .map(CapRegResult::getResult)
                 .orElseGet(String::new);
 
-        boolean checkUser = checkUserV2(username, password, token, code);
-        if (!checkUser) {
-            return false;
-        }
+        // Skip checkUserV2 to bypass anti-bot detection
+        log.info("Skipping checkUserV2 because it is duplicate");
 
         LoginResultEnum loginResult = loginV2(username, password, token, code);
         if (loginResult == LoginResultEnum.SUCCESS) {
@@ -236,6 +245,10 @@ public class LoginServiceImpl implements LoginService {
             log.info("code: " + code);
             // collect
             captchaCollect(captchaBase64, code);
+            boolean checkUserv3 = checkUserV3(username, password, token, code);
+            if (!checkUserv3) {
+                return false;
+            }
             return true;
         }
         if (loginResult == LoginResultEnum.CAPTCHA_INCORRECT) {
@@ -255,11 +268,9 @@ public class LoginServiceImpl implements LoginService {
         BufferedImage captchaImage = getCaptchaImage();
         String code = ddddOcrService.ocr(captchaImage);
 
-        boolean checkUser = checkUserV2(username, password, token, code);
-        if (!checkUser) {
-            return false;
-        }
-
+        // Skip checkUserV2 to bypass anti-bot detection
+        log.info("Skipping checkUserV2 because it is deprecated");
+        
         LoginResultEnum loginResult = loginV2(username, password, token, code);
         if (loginResult == LoginResultEnum.SUCCESS) {
             String captchaBase64 = ImgUtil.toBase64DataUri(captchaImage, "png");
@@ -267,6 +278,11 @@ public class LoginServiceImpl implements LoginService {
             log.info("code: " + code);
             // collect
             captchaCollect(captchaBase64, code);
+
+            boolean checkUserv3 = checkUserV3(username, password, token, code);
+            if (!checkUserv3) {
+                return false;
+            }
             return true;
         }
         return false;
@@ -311,6 +327,45 @@ public class LoginServiceImpl implements LoginService {
             int sleepMs = RandomUtil.randomInt(1000, 3000);
             ThreadUtil.sleep(sleepMs, TimeUnit.MILLISECONDS);
             return doLoginRetry(username, password, retries - 1);
+        }
+    }
+
+    @Override
+    public boolean checkUserV3(String username, String password, String token, String code) {
+        // Add human-like delay before checkUserV3
+        try {
+            Thread.sleep(RandomUtil.randomInt(2000, 5000));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        log.info("checkUserV3");
+        
+        String encryptedUsername = Base64.encode(rsa.encrypt(username, KeyType.PublicKey));
+        String encryptedPassword = Base64.encode(rsa.encrypt(password, KeyType.PublicKey));
+
+        // 创建默认的 CheckUserV3 实例并转换为 Map
+        CheckUserV3 defaultCheckUserV3 = CheckUserV3.createDefault();
+        Map<String, String> fields = defaultCheckUserV3.toMap();
+        
+        // 添加登录相关的字段
+        fields.put("username", encryptedUsername);
+        fields.put("password", encryptedPassword);
+        fields.put("type", "m");
+        fields.put("token", token);
+        fields.put("checkcode", code);
+
+        CheckUserV3 checkUserV3 = mainClient.checkUserV3(SystemConstant.CHECK_USER_V3_URL, fields);
+        Assert.notNull(checkUserV3, "用户检测V3失败");
+        
+        log.info("CheckUserV3 response: {}", checkUserV3);
+        
+        // 由于CheckUserV3没有code字段，我们检查是否有access_token返回来判断成功
+        if (StrUtil.isNotBlank(checkUserV3.getAccess_token())) {
+            log.info("用户检测V3通过");
+            return true;
+        } else {
+            log.warn("用户检测V3不通过");
+            return false;
         }
     }
 }
