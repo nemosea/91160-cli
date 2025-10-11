@@ -173,13 +173,6 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     public LoginResultEnum loginV2(String username, String password, String token, String code) {
-        // Add human-like delay before login
-        try {
-            Thread.sleep(RandomUtil.randomInt(1000, 3000));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        
         String encryptedUsername = Base64.encode(rsa.encrypt(username, KeyType.PublicKey));
         String encryptedPassword = Base64.encode(rsa.encrypt(password, KeyType.PublicKey));
 
@@ -334,7 +327,7 @@ public class LoginServiceImpl implements LoginService {
     public boolean checkUserV3(String username, String password, String token, String code) {
         // Add human-like delay before checkUserV3
         try {
-            Thread.sleep(RandomUtil.randomInt(2000, 5000));
+            Thread.sleep(RandomUtil.randomInt(1000, 2000));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
