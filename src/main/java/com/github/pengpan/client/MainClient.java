@@ -87,19 +87,29 @@ public interface MainClient {
     @FormUrlEncoded
     @POST("/guahao/ysubmit.html")
     Response<Void> doSubmit(@Field("sch_data") String schData,
-                            @Field("unit_id") String unitId,
-                            @Field("dep_id") String depId,
-                            @Field("doctor_id") String doctorId,
-                            @Field("schedule_id") String schId,
                             @Field("mid") String memberId,
+                            @Field("addressId") String addressId,
+                            @Field("address") String address,
+                            @Field("disease_input") String diseaseInput,
+                            @Field("order_no") String orderNo,
+                            @Field("disease_content") String diseaseContent,
                             @Field("accept") String accept,
+                            @Field("unit_id") String unitId,
+                            @Field("schedule_id") String schId,
+                            @Field("dep_id") String depId,
+                            @Field("his_dep_id") String hisDepId,
+                            @Field("sch_date") String schDate,
                             @Field("time_type") String time_type,
+                            @Field("doctor_id") String doctorId,
+                            @Field("his_doc_id") String hisDocId,
                             @Field("detlid") String detlid,
                             @Field("detlid_realtime") String detlid_realtime,
                             @Field("level_code") String level_code,
-                            @Field("addressId") String addressId,
-                            @Field("address") String address,
-                            @Field("hisMemId") String hisMemId);
+                            @Field("is_hot") String isHot,
+                            @Field("pay_online") String payOnline,
+                            @Field("detl_name") String detlName,
+                            @Field("to_date") String toDate,
+                            @Field("his_mem_id") String hisMemId);
 
     @GET("/favicon.ico")
     Response<Void> serverTime();
