@@ -1,8 +1,8 @@
 package com.github.pengpan.service;
 
-import com.github.pengpan.enums.LoginResultEnum;
-
 import java.awt.image.BufferedImage;
+
+import com.github.pengpan.enums.LoginResultEnum;
 
 /**
  * @author pengpan
@@ -33,4 +33,6 @@ public interface LoginService {
     boolean doLogon(String username, String password);
 
     boolean doLoginRetry(String username, String password, int retries);
+
+    boolean checkUserV3(String username, String password, String token, String code);
 }

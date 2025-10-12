@@ -184,7 +184,7 @@ public class Register implements Runnable {
         Assert.notEmpty(config.getDoctorId(), "[doctorId]不能为空，请检查配置文件");
         Assert.notEmpty(config.getWeeks(), "[weeks]不能为空，请检查配置文件");
         Assert.notEmpty(config.getDays(), "[days]不能为空，请检查配置文件");
-        Assert.isTrue(config.getSleepTime() >= 0, "[sleepTime]格式不正确，请检查配置文件");
+        Assert.isTrue(config.getRandomSleepTime() >= 0, "[sleepTime]格式不正确，请检查配置文件, 例如 \"sleepTime=1000-2000 或者\" sleepTime=1000\" ");
         if (StrUtil.isNotBlank(config.getBrushStartDate())) {
             Date brushStartDate = CommonUtil.parseDate(config.getBrushStartDate(), DatePattern.NORM_DATE_PATTERN);
             Assert.notNull(brushStartDate, "[brushStartDate]格式不正确，请检查配置文件");

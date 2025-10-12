@@ -1,5 +1,43 @@
 package com.github.pengpan.service.impl;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.springframework.stereotype.Service;
+
+import com.ejlchina.data.TypeRef;
+import com.ejlchina.json.JSONKit;
+import com.github.pengpan.client.MainClient;
+import com.github.pengpan.common.constant.SystemConstant;
+import com.github.pengpan.common.cookie.CookieStore;
+import com.github.pengpan.entity.Appointment;
+import com.github.pengpan.entity.BrushSch;
+import com.github.pengpan.entity.BrushSchData;
+import com.github.pengpan.entity.Config;
+import com.github.pengpan.entity.Register;
+import com.github.pengpan.entity.ScheduleInfo;
+import com.github.pengpan.enums.BrushChannelEnum;
+import com.github.pengpan.enums.DataTypeEnum;
+import com.github.pengpan.service.BrushService;
+import com.github.pengpan.service.CoreService;
+import com.github.pengpan.util.Assert;
+
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateUtil;
@@ -10,30 +48,9 @@ import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.setting.dialect.PropsUtil;
-import com.ejlchina.data.TypeRef;
-import com.ejlchina.json.JSONKit;
-import com.github.pengpan.client.MainClient;
-import com.github.pengpan.common.constant.SystemConstant;
-import com.github.pengpan.common.cookie.CookieStore;
-import com.github.pengpan.entity.*;
-import com.github.pengpan.enums.BrushChannelEnum;
-import com.github.pengpan.enums.DataTypeEnum;
-import com.github.pengpan.service.BrushService;
-import com.github.pengpan.service.CoreService;
-import com.github.pengpan.util.Assert;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Cookie;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import org.springframework.stereotype.Service;
 import retrofit2.Response;
-
-import javax.annotation.Resource;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * @author pengpan
@@ -200,8 +217,8 @@ public class CoreServiceImpl implements CoreService {
             List<ScheduleInfo> schInfoList = brushService.getTicket(config);
 
             if (CollUtil.isEmpty(schInfoList)) {
-                // 休眠
-                ThreadUtil.sleep(config.getSleepTime(), TimeUnit.MILLISECONDS);
+                // 休眠 - 使用配置的随机延迟时间
+                ThreadUtil.sleep(config.getRandomSleepTime(), TimeUnit.MILLISECONDS);
                 continue;
             }
 
@@ -222,8 +239,8 @@ public class CoreServiceImpl implements CoreService {
             }
 
             if (CollUtil.isEmpty(formList)) {
-                // 休眠
-                ThreadUtil.sleep(config.getSleepTime(), TimeUnit.MILLISECONDS);
+                // 休眠 - 使用配置的随机延迟时间
+                ThreadUtil.sleep(config.getRandomSleepTime(), TimeUnit.MILLISECONDS);
                 continue;
             }
 
@@ -296,33 +313,76 @@ public class CoreServiceImpl implements CoreService {
 
             Response<Void> submitResp = mainClient.doSubmit(
                     form.getSchData(),
-                    form.getUnitId(),
-                    form.getDepId(),
-                    form.getDoctorId(),
-                    form.getSchId(),
                     form.getMemberId(),
+                    form.getAddressId(),
+                    form.getAddress(),
+                    form.getDiseaseInput(),
+                    form.getOrderNo(),
+                    form.getDiseaseContent(),
                     form.getAccept(),
+                    form.getUnitId(),
+                    form.getSchId(),
+                    form.getDepId(),
+                    form.getHisDepId(),
+                    form.getSchDate(),
                     form.getTimeType(),
+                    form.getDoctorId(),
+                    form.getHisDocId(),
                     form.getDetlid(),
                     form.getDetlidRealtime(),
                     form.getLevelCode(),
-                    form.getAddressId(),
-                    form.getAddress(),
+                    form.getIsHot(),
+                    form.getPayOnline(),
+                    form.getDetlName(),
+                    form.getToDate(),
                     form.getHisMemId()
             );
+            // 详细打印响应信息
+            log.info("=== 提交响应详情 ===");
+            log.info("响应状态码: {}", submitResp.code());
+            log.info("响应消息: {}", submitResp.message());
+            log.info("是否成功: {}", submitResp.isSuccessful());
+            log.info("是否重定向: {}", submitResp.raw().isRedirect());
+            
+            // 打印响应头信息
+            log.info("响应头信息:");
+            submitResp.headers().toMultimap().forEach((key, values) -> 
+                log.info("  {}: {}", key, String.join(", ", values)));
+            
+            // 打印响应体（如果有的话）
+            if (submitResp.body() != null) {
+                log.info("响应体: {}", submitResp.body());
+            }
+            
+            // 打印原始响应信息
+            log.info("原始响应: {}", submitResp.raw());
 
+            // 检查响应状态
+            // if (!submitResp.isSuccessful()) {
+            //     log.warn("请求失败 - 状态码: {}, 消息: {}", submitResp.code(), submitResp.message());
+            //     failCount.put(form.getSchId(), failCount.getOrDefault(form.getSchId(), 0) + 1);
+            //     continue;
+            // }
+            
             if (!submitResp.raw().isRedirect()) {
+                log.warn("请求成功但未重定向 - 状态码: {}", submitResp.code());
+                failCount.put(form.getSchId(), failCount.getOrDefault(form.getSchId(), 0) + 1);
                 continue;
             }
 
             String redirectUrl = submitResp.headers().get("Location");
+            log.info("Submitting with params: {}", JSONKit.toJson(form));
+            log.debug("schData (raw): {}", form.getSchData());
+            log.debug("schData length: {}", form.getSchData().length());
+            log.info("redirectUrl: {}", redirectUrl);
             String html = mainClient.htmlPage(redirectUrl);
+            // log.info("Response HTML: {}", html);
             // 判断结果
             if (StrUtil.contains(html, "预约成功")) {
                 log.info("预约成功");
                 return true;
             }
-            log.info("预约失败:{}次 ({} {})", count + 1, form.getToDate(), form.getDetlName());
+            log.info("预约失败:{}次 ({} {})", count + 1, form.getSchDate(), form.getSchId());
 
             failCount.put(form.getSchId(), ++count);
         }
@@ -385,10 +445,13 @@ public class CoreServiceImpl implements CoreService {
                         .depId(config.getDeptId())
                         .doctorId(schInfo.getDoctor_id())
                         .schId(schInfo.getSchedule_id())
+                        .hisDepId("")
+                        .schDate(schInfo.getTo_date())
                         .memberId(config.getMemberId())
                         .accept("1")
                         .timeType(schInfo.getTime_type())
                         .detlName(x.getName())
+                        .hisDocId("")
                         .detlid(x.getValue())
                         .detlidRealtime(detlid_realtime)
                         .levelCode(level_code)
@@ -396,6 +459,12 @@ public class CoreServiceImpl implements CoreService {
                         .address("Civic Center")
                         .toDate(schInfo.getTo_date())
                         .hisMemId(StrUtil.blankToDefault(config.getMedicalCard(), null))
+                        .diseaseInput("11111111111111")
+                        .orderNo("")
+                        .diseaseContent("11111111111111")
+                        .accept("1")
+                        .payOnline("0")
+                        .isHot("")
                         .build())
                 .collect(Collectors.toList());
     }
