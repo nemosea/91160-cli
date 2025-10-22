@@ -35,7 +35,13 @@ public class DefaultCookieConfig {
             long tm = System.currentTimeMillis() / 1000;
             
             String json = String.format("{\"key\":\"%s\",\"val\":\"%s\",\"tm\":%d}", key, val, tm);
-            return java.net.URLEncoder.encode(json, java.nio.charset.StandardCharsets.UTF_8);
+            //return java.net.URLEncoder.encode(json, java.nio.charset.StandardCharsets.UTF_8);
+        try {
+            return java.net.URLEncoder.encode(json, java.nio.charset.StandardCharsets.UTF_8.name());
+        } catch (java.io.UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+
         }
         
         /**
